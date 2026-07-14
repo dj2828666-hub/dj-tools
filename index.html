@@ -2,532 +2,160 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    <title>计算器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>改命实用工具箱</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+        :root {
+            --primary-color: #2c3e50; 
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
         }
 
         body {
-            background-color: #f5f5f7;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* 计算器容器（放大版） */
-        .calculator {
-            width: 480px; /* 放大尺寸，原苹果计算器约320px */
-            background-color: #000;
-            border-radius: 50px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-
-        /* 显示屏区域 */
-        .display-container {
-            color: white;
-            text-align: right;
-            padding: 40px 20px 30px;
-            position: relative;
-        }
-
-        #history-toggle {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #86868b;
-            background: none;
-            border: none;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        #expression {
-            font-size: 24px;
-            color: #86868b;
-            min-height: 30px;
-            margin-bottom: 10px;
-        }
-
-        #display {
-            font-size: 72px; /* 放大字号 */
-            font-weight: 200;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-
-        /* 历史记录面板 */
-        #history-panel {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #1c1c1e;
-            border-radius: 50px;
-            padding: 40px 20px;
-            color: white;
-            z-index: 10;
-            overflow-y: auto;
-        }
-
-        .history-header {
+        /* 头部样式：适度放松 */
+        header {
+            margin-top: 35px;    /* 稍微增加 */
+            margin-bottom: 25px; /* 稍微增加 */
+            text-align: center;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #3a3a3c;
+            width: 100%;
         }
 
-        #clear-history {
-            color: #007aff;
-            background: none;
-            border: none;
-            font-size: 16px;
-            cursor: pointer;
+        header h1 {
+            font-size: 1.35rem; 
+            color: var(--primary-color);
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+        
+        header p {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin: 8px 0 0 0;
+            letter-spacing: 1px;
         }
 
-        .history-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #3a3a3c;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .history-expression {
-            color: #86868b;
-            font-size: 18px;
-        }
-
-        .history-result {
-            color: white;
-            font-size: 22px;
-        }
-
-        /* 按键网格（苹果布局） */
-        .buttons {
+        /* 导航容器：间距适中 */
+        .container {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px; /* 放大间距 */
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;           /* 调大至 16px，减少拥挤感 */
+            width: 92%;          /* 恢复一点两边留白 */
+            max-width: 420px;
         }
 
-        /* 通用按键样式 */
-        button {
-            width: 90px; /* 放大按键尺寸 */
-            height: 90px; /* 放大按键尺寸 */
-            border-radius: 50%;
-            border: none;
-            font-size: 36px; /* 放大字体 */
-            font-weight: 300;
-            cursor: pointer;
+        .nav-card {
+            background: var(--card-bg);
+            padding: 22px 10px;  /* 高度增加：从 16px 调至 22px */
+            border-radius: 18px; 
+            text-decoration: none;
+            color: var(--primary-color);
+            text-align: center;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03);
+            transition: all 0.2s ease;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            transition: all 0.1s ease;
+            justify-content: center;
+            border: 1px solid rgba(0,0,0,0.03);
         }
-
-        button:active {
-            opacity: 0.8;
+        
+        .nav-card:active {
             transform: scale(0.98);
+            background-color: #f8f9fa;
         }
 
-        /* 功能键（灰色） */
-        .func-btn {
-            background-color: #86868b;
-            color: #000;
+        /* 图标样式：中号尺寸 */
+        .icon {
+            font-size: 2.6rem;   /* 从 2.3 调大至 2.6 */
+            margin-bottom: 10px; 
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
 
-        /* 运算符键（橙色） */
-        .operator-btn {
-            background-color: #ff9f0a;
-            color: white;
-            font-size: 40px;
+        .title {
+            font-size: 0.95rem;  
+            font-weight: 600;
+            line-height: 1.3;
         }
 
-        /* 数字键（深灰） */
-        .num-btn {
-            background-color: #333333;
-            color: white;
-        }
-
-        /* 零号键（特殊宽度） */
-        #btn-0 {
-            grid-column: span 2;
-            width: 195px; /* 2个按键+间距 */
-            border-radius: 45px;
-            justify-content: flex-start;
-            padding-left: 35px;
+        /* 页脚样式 */
+        footer {
+            margin-top: 45px;    /* 增加与卡片的距离，填充下方空白 */
+            padding-bottom: 50px;
+            font-size: 0.85rem;
+            color: #95a5a6;
+            text-align: center;
+            width: 100%;
         }
     </style>
-    <!-- Font Awesome 用于图标 -->
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="calculator">
-        <!-- 显示屏 -->
-        <div class="display-container">
-            <button id="history-toggle" class="func-btn">
-                <i class="fa fa-history"></i>
-            </button>
-            <div id="expression"></div>
-            <div id="display">0</div>
-        </div>
 
-        <!-- 历史记录面板 -->
-        <div id="history-panel">
-            <div class="history-header">
-                <h2>历史记录</h2>
-                <button id="clear-history">清除</button>
-            </div>
-            <div id="history-list">
-                <p style="text-align: center; color: #86868b; margin-top: 20px;">暂无历史记录</p>
-            </div>
-        </div>
+    <header>
+        <h1>🚀 改命实用工具箱</h1>
+        <p>正心正念 · 修好当下</p>
+    </header>
 
-        <!-- 按键区域（苹果布局） -->
-        <div class="buttons">
-            <button class="func-btn" data-action="clear">C</button>
-            <button class="func-btn" data-action="clear-entry">CE</button>
-            <button class="func-btn" data-action="backspace">←
-                <i class="fa fa-backspace"></i>
-            </button>
-            <button class="operator-btn" data-operator="/">÷</button>
+    <div class="container">
+        <a href="https://xmtx3.github.io/1/" class="nav-card">
+            <div class="icon">🧭</div>
+            <div class="title">九宫格罗盘</div>
+        </a>
 
-            <button class="num-btn" data-number="7">7</button>
-            <button class="num-btn" data-number="8">8</button>
-            <button class="num-btn" data-number="9">9</button>
-            <button class="operator-btn" data-operator="*">×</button>
+        <a href="https://xmtx3.github.io/2/" class="nav-card">
+            <div class="icon">🎨</div>
+            <div class="title">五行助运穿衣</div>
+        </a>
 
-            <button class="num-btn" data-number="4">4</button>
-            <button class="num-btn" data-number="5">5</button>
-            <button class="num-btn" data-number="6">6</button>
-            <button class="operator-btn" data-operator="-">-</button>
+        <a href="https://xmtx3.github.io/3/" class="nav-card">
+            <div class="icon">✋</div>
+            <div class="title">小六爻掐指术</div>
+        </a>
 
-            <button class="num-btn" data-number="1">1</button>
-            <button class="num-btn" data-number="2">2</button>
-            <button class="num-btn" data-number="3">3</button>
-            <button class="operator-btn" data-operator="+">+</button>
+        <a href="https://xmtx3.github.io/4/" class="nav-card">
+            <div class="icon">💞</div>
+            <div class="title">婚姻婚配方位</div>
+        </a>
 
-            <button id="btn-0" class="num-btn" data-number="0">0</button>
-            <button class="num-btn" data-action="decimal">.</button>
-            <button class="operator-btn" data-action="calculate">=</button>
-        </div>
+        <a href="https://xmtx3.github.io/5/" class="nav-card">
+            <div class="icon">📜</div>
+            <div class="title">命宫计算</div>
+        </a>
+
+        <a href="https://xmtx3.github.io/6/" class="nav-card">
+            <div class="icon">☯️</div>
+            <div class="title">2026择吉日历</div>
+        </a>
+
+        <a href="https://xmtx3.github.io/7/" class="nav-card">
+            <div class="icon">👤</div>
+            <div class="title">头像分析</div>
+        </a>
+
+        <a href="https://xmtx3.github.io/x/" class="nav-card">
+            <div class="icon">🔢</div>
+            <div class="title">象数配方</div>
+        </a>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 获取DOM元素
-            const display = document.getElementById('display');
-            const expression = document.getElementById('expression');
-            const historyToggle = document.getElementById('history-toggle');
-            const historyPanel = document.getElementById('history-panel');
-            const historyList = document.getElementById('history-list');
-            const clearHistoryBtn = document.getElementById('clear-history');
-            
-            // 计算器状态
-            let currentInput = '0';
-            let previousInput = '';
-            let operator = null;
-            let waitingForNewInput = false;
-            
-            // 初始化显示
-            updateDisplay();
-            
-            // 从本地存储加载历史记录
-            loadHistory();
-            
-            // 数字按钮点击事件
-            document.querySelectorAll('[data-number]').forEach(button => {
-                button.addEventListener('click', function() {
-                    inputNumber(this.dataset.number);
-                });
-            });
-            
-            // 运算符按钮点击事件
-            document.querySelectorAll('[data-operator]').forEach(button => {
-                button.addEventListener('click', function() {
-                    inputOperator(this.dataset.operator);
-                });
-            });
-            
-            // 功能按钮点击事件
-            document.querySelector('[data-action="decimal"]').addEventListener('click', inputDecimal);
-            document.querySelector('[data-action="clear"]').addEventListener('click', clear);
-            document.querySelector('[data-action="clear-entry"]').addEventListener('click', clearEntry);
-            document.querySelector('[data-action="backspace"]').addEventListener('click', backspace);
-            document.querySelector('[data-action="calculate"]').addEventListener('click', calculate);
-            
-            // 历史记录相关事件
-            historyToggle.addEventListener('click', toggleHistory);
-            clearHistoryBtn.addEventListener('click', clearHistory);
-            
-            // 键盘输入支持（保留功能但移除提示）
-            document.addEventListener('keydown', function(event) {
-                if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-                
-                event.preventDefault();
-                
-                if (event.key >= '0' && event.key <= '9') {
-                    inputNumber(event.key);
-                } else if (event.key === '.') {
-                    inputDecimal();
-                } else if (event.key === '+' || event.key === '-') {
-                    inputOperator(event.key);
-                } else if (event.key === '*' || event.key === 'x') {
-                    inputOperator('*');
-                } else if (event.key === '/') {
-                    inputOperator('/');
-                } else if (event.key === 'Enter' || event.key === '=') {
-                    calculate();
-                } else if (event.key === 'Escape') {
-                    clear();
-                } else if (event.key === 'Backspace') {
-                    backspace();
-                }
-            });
-            
-            // 输入数字
-            function inputNumber(num) {
-                if (waitingForNewInput) {
-                    currentInput = num;
-                    waitingForNewInput = false;
-                } else {
-                    currentInput = currentInput === '0' ? num : currentInput + num;
-                }
-                updateDisplay();
-            }
-            
-            // 输入小数点
-            function inputDecimal() {
-                if (waitingForNewInput) {
-                    currentInput = '0.';
-                    waitingForNewInput = false;
-                } else if (currentInput.indexOf('.') === -1) {
-                    currentInput += '.';
-                }
-                updateDisplay();
-            }
-            
-            // 输入运算符
-            function inputOperator(nextOperator) {
-                const inputValue = parseFloat(currentInput);
-                
-                if (previousInput === '') {
-                    previousInput = inputValue;
-                } else if (operator) {
-                    const currentValue = previousInput || 0;
-                    const result = performCalculation(operator, currentValue, inputValue);
-                    
-                    currentInput = String(result);
-                    updateDisplay();
-                    previousInput = result;
-                }
-                
-                waitingForNewInput = true;
-                operator = nextOperator;
-                updateExpression();
-            }
-            
-            // 执行计算
-            function calculate() {
-                if (previousInput === '' || operator === null || waitingForNewInput) return;
-                
-                const inputValue = parseFloat(currentInput);
-                const result = performCalculation(operator, parseFloat(previousInput), inputValue);
-                
-                // 保存到历史记录
-                const calcExpression = `${previousInput} ${getOperatorSymbol(operator)} ${inputValue}`;
-                saveToHistory(calcExpression, result);
-                
-                // 更新状态
-                currentInput = String(result);
-                operator = null;
-                previousInput = '';
-                waitingForNewInput = true;
-                
-                // 更新显示
-                updateDisplay();
-                updateExpression();
-            }
-            
-            // 执行具体的数学运算
-            function performCalculation(op, firstValue, secondValue) {
-                switch (op) {
-                    case '+': return firstValue + secondValue;
-                    case '-': return firstValue - secondValue;
-                    case '*': return firstValue * secondValue;
-                    case '/': 
-                        if (secondValue === 0) {
-                            alert('错误：除数不能为零');
-                            return firstValue;
-                        }
-                        return firstValue / secondValue;
-                    default: return secondValue;
-                }
-            }
-            
-            // 获取运算符的显示符号
-            function getOperatorSymbol(op) {
-                switch (op) {
-                    case '+': return '+';
-                    case '-': return '-';
-                    case '*': return '×';
-                    case '/': return '÷';
-                    default: return '';
-                }
-            }
-            
-            // 清除所有
-            function clear() {
-                currentInput = '0';
-                previousInput = '';
-                operator = null;
-                waitingForNewInput = false;
-                updateDisplay();
-                updateExpression();
-            }
-            
-            // 清除当前输入
-            function clearEntry() {
-                currentInput = '0';
-                updateDisplay();
-            }
-            
-            // 退格
-            function backspace() {
-                if (waitingForNewInput) return;
-                
-                if (currentInput.length > 1) {
-                    currentInput = currentInput.slice(0, -1);
-                } else {
-                    currentInput = '0';
-                }
-                updateDisplay();
-            }
-            
-            // 更新显示屏
-            function updateDisplay() {
-                // 格式化数字显示，处理长数字
-                const formattedNumber = formatNumber(currentInput);
-                display.textContent = formattedNumber;
-            }
-            
-            // 更新表达式显示
-            function updateExpression() {
-                if (previousInput !== '' && operator !== null) {
-                    expression.textContent = `${previousInput} ${getOperatorSymbol(operator)}`;
-                } else {
-                    expression.textContent = '';
-                }
-            }
-            
-            // 格式化数字显示（适配苹果风格）
-            function formatNumber(num) {
-                const number = parseFloat(num);
-                
-                // 处理无穷大和NaN
-                if (!isFinite(number)) {
-                    return number === Infinity ? '∞' : '错误';
-                }
-                
-                // 处理非常大或非常小的数字
-                if (Math.abs(number) >= 1e15 || (Math.abs(number) < 1e-6 && number !== 0)) {
-                    return number.toExponential(6);
-                }
-                
-                // 处理普通数字，保留适当的小数位数
-                const numStr = num.toString();
-                if (numStr.includes('.')) {
-                    const parts = numStr.split('.');
-                    if (parts[1].length > 8) {
-                        return parseFloat(number.toFixed(8)).toString();
-                    }
-                }
-                
-                // 苹果风格：去掉末尾的.0
-                if (numStr.endsWith('.0')) {
-                    return numStr.replace('.0', '');
-                }
-                
-                return numStr;
-            }
-            
-            // 切换历史记录面板
-            function toggleHistory() {
-                historyPanel.style.display = historyPanel.style.display === 'block' ? 'none' : 'block';
-                if (historyPanel.style.display === 'block') {
-                    loadHistory();
-                }
-            }
-            
-            // 保存计算到历史记录
-            function saveToHistory(expression, result) {
-                let history = JSON.parse(localStorage.getItem('calculatorHistory') || '[]');
-                
-                history.unshift({
-                    expression: expression,
-                    result: result.toString(),
-                    timestamp: new Date().toISOString()
-                });
-                
-                if (history.length > 50) {
-                    history = history.slice(0, 50);
-                }
-                
-                localStorage.setItem('calculatorHistory', JSON.stringify(history));
-                
-                if (historyPanel.style.display === 'block') {
-                    loadHistory();
-                }
-            }
-            
-            // 从本地存储加载历史记录
-            function loadHistory() {
-                const history = JSON.parse(localStorage.getItem('calculatorHistory') || '[]');
-                historyList.innerHTML = '';
-                
-                if (history.length === 0) {
-                    historyList.innerHTML = '<p style="text-align: center; color: #86868b; margin-top: 20px;">暂无历史记录</p>';
-                    return;
-                }
-                
-                history.forEach(item => {
-                    const historyItem = document.createElement('div');
-                    historyItem.className = 'history-item';
-                    historyItem.innerHTML = `
-                        <span class="history-expression">${item.expression}</span>
-                        <span class="history-result">${item.result}</span>
-                    `;
-                    
-                    // 点击历史记录项可以将结果用于当前计算
-                    historyItem.addEventListener('click', function() {
-                        currentInput = item.result;
-                        waitingForNewInput = true;
-                        updateDisplay();
-                        updateExpression();
-                        historyPanel.style.display = 'none';
-                    });
-                    
-                    historyList.appendChild(historyItem);
-                });
-            }
-            
-            // 清除历史记录
-            function clearHistory() {
-                localStorage.removeItem('calculatorHistory');
-                loadHistory();
-            }
-        });
-    </script>
+    <footer>
+        © 2026 版权所有 dy : 小茗同学
+    </footer>
+
 </body>
 </html>
