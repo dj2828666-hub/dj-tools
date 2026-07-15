@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>六爻解卦辅助工具</title>
+<style>
+    :root {
+        --paper: #fdf8ee;
+        --paper-deep: #f7f0df;
+        --ink: #4a3826;
+        --ink-soft: #7a6650;
+        --brand: #8B4513;
+        --brand-deep: #6b3310;
+        --brand-light: #d2b48c;
+        --line: #e8ddc7;
+        --accent: #b23c2e;
+        --good: #4c8c5a;
+        --shadow: 0 4px 16px rgba(90, 62, 34, 0.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+        font-family: "PingFang SC", "Microsoft YaHei", "SimHei", sans-serif;
+        background: var(--paper-deep);
+        color: var(--ink);
+        line-height: 1.55;
+        padding-bottom: calc(90px + env(safe-area-inset-bottom));
+        background-image:
+            radial-gradient(circle at 10% 10%, rgba(139,69,19,0.05), transparent 40%),
+            radial-gradient(circle at 90% 90%, rgba(139,69,19,0.05), transparent 40%);
+    }
+
+    .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: linear-gradient(to bottom, var(--brand), var(--brand-deep));
+        color: #fdf3e4;
+        padding: 12px 16px calc(10px + env(safe-area-inset-top)/4);
+        padding-top: max(12px, env(safe-area-inset-top));
+        text-align: center;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+    }
+
+    .topbar h1 {
+        font-size: 19px;
+        letter-spacing: 2px;
+        font-weight: 600;
+    }
+
+    .topbar .clock {
+        margin-top: 4px;
+        font-size: 12px;
+        opacity: 0.92;
+        letter-spacing: 0.5px;
+    }
+
+    .wrap {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 14px 12px 6px;
+    }
+
+    .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 16px;
+        margin-bottom: 14px;
+    }
+
+    .card h2 {
+        font-size: 15px;
+        color: var(--brand);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .card h2 .num {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--brand);
+        color: #fff;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* 求测事项 */
+    #query {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--brand-light);
+        border-radius: 10px;
+        font-size: 16px;
+        background: #fffdf8;
+        color: var(--ink);
+    }
+    #query:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(139,69,19,0.12); }
+
+    .quick-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    .quick-tag {
+        font-size: 12px;
+        padding: 5px 11px;
+        border-radius: 20px;
+        background: var(--paper-deep);
+        border: 1px solid var(--line);
+        color: var(--ink-soft);
+    }
+    .quick-tag:active { background: var(--brand-light); color: #fff; }
+
+    /* 起卦时间 */
+    .dt-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    input[type="datetime-local"] {
+        flex: 1;
+        padding: 11px 10px;
+        border: 1px solid var(--brand-light);
+        border-radius: 10px;
+        font-size: 15px;
+        background: #fffdf8;
+        color: var(--ink);
+        min-width: 0;
+    }
+    .now-btn {
+        flex-shrink: 0;
+        padding: 11px 14px;
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(to bottom, var(--brand), var(--brand-deep));
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .now-btn:active { opacity: 0.85; }
+
+    .ganzhi-board {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 14px;
+    }
+    .gz-cell {
+        text-align: center;
+        background: linear-gradient(180deg, #fffdf8, var(--paper-deep));
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 4px 8px;
+    }
+    .gz-cell .label {
+        font-size: 11px;
+        color: var(--ink-soft);
+        margin-bottom: 4px;
+    }
+    .gz-cell .value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--brand-deep);
+        letter-spacing: 1px;
+    }
+    .gz-note {
+        margin-top: 10px;
+        font-size: 11.5px;
+        color: var(--ink-soft);
+        text-align: center;
+        line-height: 1.5;
+    }
+
+    details.manual-edit {
+        margin-top: 12px;
+        border-top: 1px dashed var(--line);
+        padding-top: 10px;
+    }
+    details.manual-edit summary {
+        font-size: 12.5px;
+        color: var(--brand);
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    details.manual-edit summary::-webkit-details-marker { display: none; }
+    details.manual-edit summary::after {
+        content: "▾";
+        transition: transform 0.2s;
+    }
+    details.manual-edit[open] summary::after { transform: rotate(180deg); }
+
+    .manual-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .manual-grid label {
+        font-size: 12px;
+        color: var(--ink-soft);
+        display: block;
+        margin-bottom: 4px;
+    }
+    .manual-grid input {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 14px;
+        background: #fffdf8;
+        color: var(--ink);
+    }
+
+    /* 卦象输入 */
+    .gua-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin: -4px 0 12px;
+    }
+    .ghost-btn {
+        font-size: 12.5px;
+        padding: 7px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--brand-light);
+        background: #fffdf8;
+        color: var(--brand-deep);
+        font-weight: 600;
+    }
+    .ghost-btn:active { background: var(--paper-deep); }
+
+    .yao-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .yao-row {
+        background: #fffdf8;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px 12px;
+        position: relative;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .yao-row.is-moving { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(178,60,46,0.08); }
+
+    .yao-row-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .yao-name {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: var(--brand-deep);
+    }
+    .yao-badge {
+        font-size: 10.5px;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        border-radius: 10px;
+        padding: 1px 8px;
+        display: none;
+    }
+    .yao-row.is-moving .yao-badge { display: inline-block; }
+
+    .yao-options {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+    .yao-btn { display: block; }
+    .yao-btn input { position: absolute; opacity: 0; pointer-events: none; }
+    .yao-btn .pill {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 9px 2px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--paper-deep);
+        color: var(--ink-soft);
+        font-size: 11.5px;
+        min-height: 46px;
+        transition: all 0.15s;
+    }
+    .yao-btn .pill .sym {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--brand);
+        line-height: 1;
+    }
+    .yao-btn input:checked + .pill {
+        background: linear-gradient(to bottom, var(--brand), var(--brand-deep));
+        border-color: var(--brand-deep);
+        color: #fff;
+    }
+    .yao-btn input:checked + .pill .sym { color: #fff; }
+    .yao-btn:active .pill { transform: scale(0.96); }
+
+    .gua-image-container {
+        text-align: center;
+        margin-top: 12px;
+        padding: 10px;
+        border: 1px dashed var(--brand-light);
+        border-radius: 10px;
+        background: var(--paper-deep);
+        display: none;
+    }
+    .gua-image { max-width: 100%; border-radius: 8px; }
+
+    /* 提示词结果 */
+    textarea {
+        width: 100%;
+        height: 260px;
+        padding: 12px;
+        border: 1px solid var(--brand-light);
+        border-radius: 10px;
+        font-size: 13px;
+        line-height: 1.6;
+        resize: vertical;
+        background: var(--paper-deep);
+        font-family: Consolas, Monaco, monospace;
+        color: var(--ink);
+    }
+    .copy-btn {
+        margin-top: 10px;
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(to bottom, var(--good), #3d7a49);
+        color: #fff;
+        font-size: 14.5px;
+        font-weight: 700;
+    }
+    .copy-btn:active { opacity: 0.85; }
+    .tip { color: var(--ink-soft); font-size: 11.5px; margin-top: 8px; text-align: center; }
+
+    /* 底部固定生成按钮 */
+    .bottom-bar {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 30;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+        background: linear-gradient(to top, var(--paper-deep) 70%, rgba(247,240,223,0));
+    }
+    .bottom-bar-inner { max-width: 560px; margin: 0 auto; }
+    #generateBtn {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(to bottom, var(--brand), var(--brand-deep));
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        box-shadow: 0 6px 18px rgba(139,69,19,0.35);
+    }
+    #generateBtn:active { transform: translateY(1px); box-shadow: 0 3px 8px rgba(139,69,19,0.3); }
+
+    .toast {
+        position: fixed;
+        left: 50%; bottom: 100px;
+        transform: translateX(-50%) translateY(10px);
+        background: rgba(74,56,38,0.94);
+        color: #fff;
+        padding: 9px 18px;
+        border-radius: 20px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.25s;
+        z-index: 50;
+        white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 稍宽屏幕（平板/桌面）优化，但仍保持单栏节奏 */
+    @media (min-width: 600px) {
+        .wrap { padding: 20px 16px 6px; }
+        .card { padding: 20px; }
+        textarea { height: 320px; }
+    }
+</style>
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>六爻解卦辅助工具</h1>
+        <div class="clock" id="liveClock">当前时间：加载中...</div>
+    </div>
+
+    <div class="wrap">
+
+        <!-- 一、求测事项 -->
+        <div class="card">
+            <h2><span class="num">1</span>求测事项</h2>
+            <input type="text" id="query" placeholder="例如：事业晋升、感情发展、健康状况等">
+            <div class="quick-tags">
+                <span class="quick-tag" data-q="事业发展">事业发展</span>
+                <span class="quick-tag" data-q="感情婚姻">感情婚姻</span>
+                <span class="quick-tag" data-q="财运求财">财运求财</span>
+                <span class="quick-tag" data-q="健康状况">健康状况</span>
+                <span class="quick-tag" data-q="考试学业">考试学业</span>
+            </div>
+        </div>
+
+        <!-- 二、起卦时间 -->
+        <div class="card">
+            <h2><span class="num">2</span>起卦时间</h2>
+            <div class="dt-row">
+                <input type="datetime-local" id="baseDateTime">
+                <button type="button" class="now-btn" id="syncNowBtn">此刻</button>
+            </div>
+
+            <div class="ganzhi-board">
+                <div class="gz-cell"><div class="label">年柱</div><div class="value" id="yearDisplay">-</div></div>
+                <div class="gz-cell"><div class="label">月柱</div><div class="value" id="monthDisplay">-</div></div>
+                <div class="gz-cell"><div class="label">日柱</div><div class="value" id="dayDisplay">-</div></div>
+                <div class="gz-cell"><div class="label">时柱</div><div class="value" id="hourDisplay">-</div></div>
+            </div>
+            <div class="gz-note">四柱已按立春分年、节气分月、23点起次日算法自动排出（东八区），如与万年历个别存疑可展开手动修改</div>
+
+            <details class="manual-edit">
+                <summary>手动修改干支（高级）</summary>
+                <div class="manual-grid">
+                    <div><label for="year">年柱干支</label><input type="text" id="year" placeholder="例如：甲辰"></div>
+                    <div><label for="month">月柱干支</label><input type="text" id="month" placeholder="例如：丙寅"></div>
+                    <div><label for="day">日柱干支</label><input type="text" id="day" placeholder="例如：戊午"></div>
+                    <div><label for="hour">时柱干支</label><input type="text" id="hour" placeholder="例如：壬子"></div>
+                </div>
+            </details>
+
+            <div class="gua-image-container" id="guaImageContainer">
+                <img src="gua-xiang.png" alt="卦象对比" class="gua-image">
+            </div>
+        </div>
+
+        <!-- 三、卦象输入 -->
+        <div class="card">
+            <h2><span class="num">3</span>卦象输入</h2>
+            <div class="gua-toolbar">
+                <button type="button" class="ghost-btn" id="compareBtn">卦象对比图</button>
+            </div>
+
+            <div class="yao-list" id="yaoList">
+                <!-- 六爻由 JS 生成，顺序：上爻→初爻 -->
+            </div>
+        </div>
+
+        <!-- 四、提示词 -->
+        <div class="card result-area">
+            <h2><span class="num">4</span>大模型提示词</h2>
+            <textarea id="promptOutput" readonly placeholder="点击下方「生成提示词」按钮..."></textarea>
+            <button type="button" class="copy-btn" id="copyBtn">复制提示词</button>
+            <p class="tip">复制此提示词并粘贴到 DeepSeek、ChatGPT 等大模型中进行卦象解析</p>
+        </div>
+
+    </div>
+
+    <div class="bottom-bar">
+        <div class="bottom-bar-inner">
+            <button type="button" id="generateBtn">生成提示词</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+/* ============ 干支速查表 ============ */
+const STEMS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const BRANCHES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+// 24节气累积分钟偏移表（寿星天文历近似算法，基准 1900-01-06 02:05，1900-2100年内足够精确）
+const S_TERM_INFO = [0,21208,42467,63836,85337,107014,128867,150921,173149,
+    195551,218072,240693,263343,285989,308563,331033,353350,375494,
+    397447,419210,440795,462224,483532,504758];
+
+function getTermDate(y, n) {
+    const base = new Date(1900, 0, 6, 2, 5, 0).getTime();
+    const offsetMs = (525948.76 * (y - 1900) + S_TERM_INFO[n]) * 60000;
+    return new Date(base + offsetMs);
+}
+
+function toJDN(y, m, d) {
+    const a = Math.floor((14 - m) / 12);
+    const y2 = y + 4800 - a;
+    const m2 = m + 12 * a - 3;
+    return d + Math.floor((153 * m2 + 2) / 5) + 365 * y2 + Math.floor(y2 / 4) - Math.floor(y2 / 100) + Math.floor(y2 / 400) - 32045;
+}
+
+/* 根据任意时间点计算年/月/日/时四柱干支 */
+function getGanZhi(date) {
+    const y = date.getFullYear();
+
+    // 年柱：以立春为界
+    const lichunThisYear = getTermDate(y, 2);
+    const ganzhiYear = date >= lichunThisYear ? y : y - 1;
+    const yearStemIdx = ((ganzhiYear - 4) % 10 + 10) % 10;
+    const yearBranchIdx = ((ganzhiYear - 4) % 12 + 12) % 12;
+
+    // 月柱：以十二节为界（去年大雪 + 今年12节 + 明年小寒兜底）
+    const nodes = [{ idx: 22, date: getTermDate(y - 1, 22) }];
+    for (let idx = 0; idx <= 22; idx += 2) nodes.push({ idx, date: getTermDate(y, idx) });
+    nodes.push({ idx: 0, date: getTermDate(y + 1, 0) });
+
+    let current = nodes[0];
+    for (const node of nodes) {
+        if (node.date <= date) current = node; else break;
+    }
+    const m = ((current.idx / 2 - 1) + 12) % 12; // 0=寅月 ... 11=丑月
+    const firstMonthStemIdx = ((yearStemIdx % 5) * 2 + 2) % 10; // 五虎遁
+    const monthStemIdx = (firstMonthStemIdx + m) % 10;
+    const monthBranchIdx = (2 + m) % 12;
+
+    // 日柱：儒略日法，23点后算作次日（晚子时归次日）
+    let dayDate = new Date(date);
+    if (dayDate.getHours() >= 23) dayDate.setDate(dayDate.getDate() + 1);
+    const jdn = toJDN(dayDate.getFullYear(), dayDate.getMonth() + 1, dayDate.getDate());
+    const dayStemIdx = ((jdn + 9) % 10 + 10) % 10;
+    const dayBranchIdx = ((jdn + 1) % 12 + 12) % 12;
+
+    // 时柱：五鼠遁
+    const hour = date.getHours();
+    const hourBranchIdx = Math.floor((hour + 1) / 2) % 12;
+    const ziStemIdx = (dayStemIdx % 5) * 2;
+    const hourStemIdx = (ziStemIdx + hourBranchIdx) % 10;
+
+    return {
+        year: STEMS[yearStemIdx] + BRANCHES[yearBranchIdx],
+        month: STEMS[monthStemIdx] + BRANCHES[monthBranchIdx],
+        day: STEMS[dayStemIdx] + BRANCHES[dayBranchIdx],
+        hour: STEMS[hourStemIdx] + BRANCHES[hourBranchIdx],
+        hourLabel: `${BRANCHES[hourBranchIdx]}时`
+    };
+}
+
+/* ============ 顶部实时时钟 ============ */
+function updateLiveClock() {
+    const now = new Date();
+    const gz = getGanZhi(now);
+    const pad = n => n.toString().padStart(2, '0');
+    document.getElementById('liveClock').textContent =
+        `当前时间：${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}　${gz.year}年${gz.month}月${gz.day}日${gz.hour}时`;
+}
+updateLiveClock();
+setInterval(updateLiveClock, 1000);
+
+/* ============ 起卦时间：datetime-local 输入 + 自动排四柱 ============ */
+const baseDateTimeInput = document.getElementById('baseDateTime');
+
+function toLocalInputValue(date) {
+    const pad = n => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function refreshGanZhiFields() {
+    const raw = baseDateTimeInput.value;
+    const date = raw ? new Date(raw) : new Date();
+    const gz = getGanZhi(date);
+
+    document.getElementById('yearDisplay').textContent = gz.year;
+    document.getElementById('monthDisplay').textContent = gz.month;
+    document.getElementById('dayDisplay').textContent = gz.day;
+    document.getElementById('hourDisplay').textContent = gz.hour;
+
+    document.getElementById('year').value = gz.year;
+    document.getElementById('month').value = gz.month;
+    document.getElementById('day').value = gz.day;
+    document.getElementById('hour').value = gz.hour;
+}
+
+function setToNow() {
+    baseDateTimeInput.value = toLocalInputValue(new Date());
+    refreshGanZhiFields();
+}
+
+setToNow();
+baseDateTimeInput.addEventListener('change', refreshGanZhiFields);
+document.getElementById('syncNowBtn').addEventListener('click', setToNow);
+
+/* ============ 求测事项快捷标签 ============ */
+document.querySelectorAll('.quick-tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+        document.getElementById('query').value = tag.dataset.q;
+    });
+});
+
+/* ============ 卦象对比图开关 ============ */
+document.getElementById('compareBtn').addEventListener('click', function () {
+    const box = document.getElementById('guaImageContainer');
+    const show = box.style.display === 'none' || box.style.display === '';
+    box.style.display = show ? 'block' : 'none';
+    this.textContent = show ? '隐藏卦象图' : '卦象对比图';
+});
+
+/* ============ 六爻输入区（上爻→初爻） ============ */
+const YAO_LABELS = ['上爻', '五爻', '四爻', '三爻', '二爻', '初爻'];
+const YAO_OPTIONS = [
+    { value: '少阳', sym: '—' },
+    { value: '少阴', sym: '--' },
+    { value: '老阳', sym: 'X' },
+    { value: '老阴', sym: 'o' }
+];
+
+const yaoListEl = document.getElementById('yaoList');
+YAO_LABELS.forEach((label, i) => {
+    const yaoNum = 6 - i; // 上爻=yao6 ... 初爻=yao1
+    const row = document.createElement('div');
+    row.className = 'yao-row';
+    row.dataset.yao = yaoNum;
+
+    row.innerHTML = `
+        <div class="yao-row-head">
+            <span class="yao-name">${label}</span>
+            <span class="yao-badge">动爻</span>
+        </div>
+        <div class="yao-options">
+            ${YAO_OPTIONS.map(opt => `
+                <label class="yao-btn">
+                    <input type="radio" name="yao${yaoNum}" value="${opt.value}">
+                    <span class="pill"><span class="sym">${opt.sym}</span>${opt.value}</span>
+                </label>
+            `).join('')}
+        </div>
+    `;
+    yaoListEl.appendChild(row);
+});
+
+yaoListEl.addEventListener('change', e => {
+    if (e.target.name && e.target.name.startsWith('yao')) {
+        const row = e.target.closest('.yao-row');
+        const moving = e.target.value === '老阳' || e.target.value === '老阴';
+        row.classList.toggle('is-moving', moving);
+    }
+});
+
+/* ============ toast 提示 ============ */
+let toastTimer = null;
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ============ 生成提示词 ============ */
+document.getElementById('generateBtn').addEventListener('click', function () {
+    const query = document.getElementById('query').value.trim();
+    if (!query) { showToast('请输入求测事项'); return; }
+
+    const year = document.getElementById('year').value.trim();
+    const month = document.getElementById('month').value.trim();
+    const day = document.getElementById('day').value.trim();
+    const hour = document.getElementById('hour').value.trim();
+    if (!year || !month || !day || !hour) { showToast('请完整填写起卦时间的干支'); return; }
+
+    const yaoValues = [];
+    const movingLines = [];
+    for (let i = 1; i <= 6; i++) {
+        const selected = document.querySelector(`input[name="yao${i}"]:checked`);
+        if (!selected) { showToast(`请选择第${7 - i}爻的状态`); return; }
+        yaoValues.push(selected.value);
+        if (selected.value === '老阳' || selected.value === '老阴') movingLines.push(i);
+    }
+
+    const prompt = generatePrompt(query, year, month, day, hour, yaoValues, movingLines);
+    document.getElementById('promptOutput').value = prompt;
+    document.getElementById('promptOutput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+document.getElementById('copyBtn').addEventListener('click', async function () {
+    const promptOutput = document.getElementById('promptOutput');
+    if (!promptOutput.value) { showToast('请先生成提示词'); return; }
+    try {
+        await navigator.clipboard.writeText(promptOutput.value);
+        showToast('提示词已复制到剪贴板');
+    } catch (err) {
+        promptOutput.select();
+        document.execCommand('copy');
+        showToast('提示词已复制到剪贴板');
+    }
+});
+
+function generatePrompt(query, year, month, day, hour, yaoValues, movingLines) {
+    // 用户录入顺序：上爻(6)...初爻(1)，转换为从下往上：初爻(1)...上爻(6)
+    const correctOrderYaoValues = [
+        yaoValues[0], yaoValues[1], yaoValues[2],
+        yaoValues[3], yaoValues[4], yaoValues[5]
+    ];
+
+    const originalHexagram = correctOrderYaoValues.map(yao =>
+        (yao === '少阳' || yao === '老阳') ? '阳爻' : '阴爻'
+    );
+    const changedHexagram = correctOrderYaoValues.map(yao => {
+        if (yao === '老阳') return '阴爻';
+        if (yao === '老阴') return '阳爻';
+        return (yao === '少阳') ? '阳爻' : '阴爻';
+    });
+
+    const movingLinesDisplay = [...movingLines].sort((a, b) => a - b);
+
+    return `你是一位深谙中国传统《周易》古卜之道的权威专家，精通京房八宫六十四卦、纳甲筮法、六亲六神世应体系。你的解卦风格严谨、细致、富有深度，同时又能将古老的智慧与现代生活情境相结合。你的任务是基于用户提供的完整卦象信息，进行专业、系统且富有洞见的分析和解读。
+
+请严格遵循以下原则进行分析：
+1. 严格依据卦象：所有分析必须严格基于用户提供的卦象（卦爻、动爻、六亲、六神、世应等），不得臆造或脱离卦象空谈。
+2. 系统性分析：遵循"由基到详，由体到用"的分析逻辑：从本卦开始，再看动变；先看世应，再看六亲六神与爻位。
+3. 分点清晰阐述：回答时结构清晰，分点分段，使用专业术语，并对关键术语进行简要解释，确保用户理解。
+4. 辩证与综合：当卦象信息出现矛盾时（如用神旺相但被凶神克制），要明确指出其中的辩证关系，并进行权重分析，给出最可能的趋势判断。
+5. 给出范围，而非铁口直断：强调"卦象如此，事在人为"，解读结果是基于当前能量趋势的"可能性"，避免使用绝对化的断言。
+
+以下是用户问卦的完整信息：
+
+【求测事项】
+${query}
+
+【起卦时间】
+${year}年 ${month}月 ${day}日 ${hour}时
+
+【卦象信息】
+本卦（初始卦象）：${originalHexagram.join(' → ')} 
+变卦（变化后的卦象）：${changedHexagram.join(' → ')} 
+动爻位置：${movingLinesDisplay.length > 0 ? movingLinesDisplay.join('、') + '爻' : '无动爻'} 
+
+【详细爻象信息】
+上爻（第六爻）：${yaoValues[5]} ${yaoValues[5] === '老阳' || yaoValues[5] === '老阴' ? '(动爻)' : ''}
+五爻（第五爻）：${yaoValues[4]} ${yaoValues[4] === '老阳' || yaoValues[4] === '老阴' ? '(动爻)' : ''}
+四爻（第四爻）：${yaoValues[3]} ${yaoValues[3] === '老阳' || yaoValues[3] === '老阴' ? '(动爻)' : ''}
+三爻（第三爻）：${yaoValues[2]} ${yaoValues[2] === '老阳' || yaoValues[2] === '老阴' ? '(动爻)' : ''}
+二爻（第二爻）：${yaoValues[1]} ${yaoValues[1] === '老阳' || yaoValues[1] === '老阴' ? '(动爻)' : ''}
+初爻（第一爻）：${yaoValues[0]} ${yaoValues[0] === '老阳' || yaoValues[0] === '老阴' ? '(动爻)' : ''}
+
+请根据以上信息，按照以下步骤进行专业分析：
+
+第一步：定性分析 - 本卦与变卦的宏观趋势
+首先，从整体上分析本卦的卦名、卦象寓意，以及它如何映射到用户所问的【${query}】。接着，分析变卦所指示的事态最终发展方向。阐述从本卦到变卦，整个事件发展脉络的象征意义。
+
+第二步：用神定位与旺衰分析
+明确本卦的用神，并分析该用神的旺衰状态：
+- 月建对用神是生、扶、克、耗、泄？
+- 日辰对用神是生、扶、克、耗、泄？
+- 用神在卦中是否得其他爻生扶（生），或受其他爻克制（克）？是否有动爻来生或来克？
+- 用神是否逢空亡或月破、日破？若有，请解释其含义。
+
+第三步：动爻核心分析
+${movingLinesDisplay.length > 0 ? `动爻是事情的枢纽，请逐一分析每个动爻：
+${movingLinesDisplay.map(line => `- 动爻 ${line}：此爻发动，对用神产生了什么影响（生、克、冲、合、刑、害）？这个动变过程揭示了事情发展中的哪个关键环节或变化？`).join('\n')}` : '此卦无动爻，主事态相对稳定，变化不大。'}
+
+第四步：深度关系剖析
+- 世应关系：分析世爻与应爻的生克关系，以及它们各自的旺衰状态，判断"主客"形势。
+- 六亲联动：分析卦中其他六亲（妻财、父母、官鬼、子孙、兄弟）与用神、世爻的生克关系，揭示与事情相关的其他人物或因素。
+- 六神意象：结合所问事项，解读六神（青龙、朱雀等）所附加的意象。
+
+第五步：综合断语与建议
+综合以上所有分析，给出一个总结性的趋势判断：
+- 吉凶层面：基于用神旺衰、动爻生克、世应关系，判断此事成功/顺利/不利的可能性有多大。
+- 过程描述：描述事情可能的发展过程和关键节点。
+- 行动建议：根据卦象的提示，给出趋吉避凶的具体建议。
+
+请用专业、严谨的语言，分步骤、分层次地进行解读，确保分析全面且有深度。`;
+}
+</script>
+</body>
+</html>
