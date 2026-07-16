@@ -326,6 +326,62 @@
     }
     .gua-image { max-width: 100%; border-radius: 8px; }
 
+    /* 自动排盘预览 */
+    .paipan-empty {
+        text-align: center;
+        color: var(--ink-soft);
+        font-size: 12.5px;
+        padding: 10px 4px;
+    }
+    .paipan-summary {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed var(--line);
+    }
+    .paipan-summary b { color: var(--brand-deep); }
+    table.paipan-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+    table.paipan-table th {
+        font-size: 10.5px;
+        color: var(--ink-soft);
+        font-weight: 500;
+        padding: 4px 2px;
+        text-align: center;
+        border-bottom: 1px solid var(--line);
+    }
+    table.paipan-table td {
+        padding: 6px 2px;
+        text-align: center;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+    }
+    table.paipan-table tr:last-child td { border-bottom: none; }
+    .pp-liuqin { font-weight: 700; color: var(--brand-deep); }
+    .pp-najia { color: var(--ink); }
+    .pp-yao-sym { font-weight: 800; color: var(--brand); }
+    .pp-tags { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; }
+    .pp-tag {
+        font-size: 9.5px;
+        padding: 1px 5px;
+        border-radius: 8px;
+        color: #fff;
+        line-height: 1.5;
+    }
+    .pp-tag.world { background: var(--accent); }
+    .pp-tag.resp { background: var(--good); }
+    .pp-tag.void { background: var(--ink-soft); }
+    .pp-tag.move { background: var(--brand); }
+    .pp-bian { font-size: 10.5px; color: var(--accent); }
+
     /* 提示词结果 */
     textarea {
         width: 100%;
@@ -467,6 +523,14 @@
             </div>
         </div>
 
+        <!-- 自动排盘预览 -->
+        <div class="card">
+            <h2><span class="num">✓</span>自动排盘（纳甲·六亲·世应·六神）</h2>
+            <div id="paipanArea">
+                <div class="paipan-empty">选完六个爻之后，这里会自动排出专业卦盘</div>
+            </div>
+        </div>
+
         <!-- 四、提示词 -->
         <div class="card result-area">
             <h2><span class="num">4</span>大模型提示词</h2>
@@ -553,6 +617,157 @@ function getGanZhi(date) {
     };
 }
 
+/* ============ 六十四卦自动排盘引擎（纳甲·六亲·世应·六神·空亡）============ */
+const TRIGRAM_BITS = {
+    '乾': [1,1,1], '坤': [0,0,0], '震': [1,0,0], '坎': [0,1,0],
+    '艮': [0,0,1], '巽': [0,1,1], '离': [1,0,1], '兑': [1,1,0]
+};
+const TRIGRAM_ELEMENT = { '乾':'金','兑':'金','离':'火','震':'木','巽':'木','坎':'水','艮':'土','坤':'土' };
+const TRIGRAM_NAMES = Object.keys(TRIGRAM_BITS);
+
+// 六十四卦卦名表：GUA_NAME_TABLE[上卦][下卦] = 卦名
+const GUA_NAME_TABLE = {
+    '乾': {'乾':'乾为天','兑':'天泽履','离':'天火同人','震':'天雷无妄','巽':'天风姤','坎':'天水讼','艮':'天山遁','坤':'天地否'},
+    '兑': {'乾':'泽天夬','兑':'兑为泽','离':'泽火革','震':'泽雷随','巽':'泽风大过','坎':'泽水困','艮':'泽山咸','坤':'泽地萃'},
+    '离': {'乾':'火天大有','兑':'火泽睽','离':'离为火','震':'火雷噬嗑','巽':'火风鼎','坎':'火水未济','艮':'火山旅','坤':'火地晋'},
+    '震': {'乾':'雷天大壮','兑':'雷泽归妹','离':'雷火丰','震':'震为雷','巽':'雷风恒','坎':'雷水解','艮':'雷山小过','坤':'雷地豫'},
+    '巽': {'乾':'风天小畜','兑':'风泽中孚','离':'风火家人','震':'风雷益','巽':'巽为风','坎':'风水涣','艮':'风山渐','坤':'风地观'},
+    '坎': {'乾':'水天需','兑':'水泽节','离':'水火既济','震':'水雷屯','巽':'水风井','坎':'坎为水','艮':'水山蹇','坤':'水地比'},
+    '艮': {'乾':'山天大畜','兑':'山泽损','离':'山火贲','震':'山雷颐','巽':'山风蛊','坎':'山水蒙','艮':'艮为山','坤':'山地剥'},
+    '坤': {'乾':'地天泰','兑':'地泽临','离':'地火明夷','震':'地雷复','巽':'地风升','坎':'地水师','艮':'地山谦','坤':'坤为地'}
+};
+
+// 京房纳甲表：每个三爻卦在内卦(初二三爻)/外卦(四五上爻)时纳的天干地支
+const NAJIA_TABLE = {
+    '乾': { inner: ['甲子','甲寅','甲辰'], outer: ['壬午','壬申','壬戌'] },
+    '坤': { inner: ['乙未','乙巳','乙卯'], outer: ['癸丑','癸亥','癸酉'] },
+    '震': { inner: ['庚子','庚寅','庚辰'], outer: ['庚午','庚申','庚戌'] },
+    '巽': { inner: ['辛丑','辛亥','辛酉'], outer: ['辛未','辛巳','辛卯'] },
+    '坎': { inner: ['戊寅','戊辰','戊午'], outer: ['戊申','戊戌','戊子'] },
+    '离': { inner: ['己卯','己丑','己亥'], outer: ['己酉','己未','己巳'] },
+    '艮': { inner: ['丙辰','丙午','丙申'], outer: ['丙戌','丙子','丙寅'] },
+    '兑': { inner: ['丁巳','丁卯','丁丑'], outer: ['丁亥','丁酉','丁未'] }
+};
+
+const BRANCH_ELEMENT = { '子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水' };
+const GEN_MAP = { '木':'火','火':'土','土':'金','金':'水','水':'木' }; // a生b
+const KE_MAP  = { '木':'土','土':'水','水':'火','火':'金','金':'木' }; // a克b
+const LIUSHEN_ORDER = ['青龙','朱雀','勾陈','螣蛇','白虎','玄武'];
+const LIUSHEN_START = { '甲':0,'乙':0,'丙':1,'丁':1,'戊':2,'己':3,'庚':4,'辛':4,'壬':5,'癸':5 };
+
+function bitsToTrigramName(bits) {
+    for (const name of TRIGRAM_NAMES) {
+        const b = TRIGRAM_BITS[name];
+        if (b[0] === bits[0] && b[1] === bits[1] && b[2] === bits[2]) return name;
+    }
+    return null;
+}
+function flipBit(b) { return b === 1 ? 0 : 1; }
+
+// 依"京房八宫"规则，从任一本宫卦推演出该宫全部8卦（本宫/一至五世/游魂/归魂）及世爻位置
+function generatePalaceGuas(homeName) {
+    const h = TRIGRAM_BITS[homeName];
+    const home6 = [h[0], h[1], h[2], h[0], h[1], h[2]];
+    const guas = [{ bits: home6.slice(), world: 6 }];
+    let cur = home6.slice(); cur[0] = flipBit(cur[0]); guas.push({ bits: cur.slice(), world: 1 });
+    cur = cur.slice(); cur[1] = flipBit(cur[1]); guas.push({ bits: cur.slice(), world: 2 });
+    cur = cur.slice(); cur[2] = flipBit(cur[2]); guas.push({ bits: cur.slice(), world: 3 });
+    cur = cur.slice(); cur[3] = flipBit(cur[3]); guas.push({ bits: cur.slice(), world: 4 });
+    cur = cur.slice(); cur[4] = flipBit(cur[4]); guas.push({ bits: cur.slice(), world: 5 });
+    let youhun = cur.slice(); youhun[3] = flipBit(youhun[3]); guas.push({ bits: youhun.slice(), world: 4 });
+    let guihun = youhun.slice(); guihun[0] = h[0]; guihun[1] = h[1]; guihun[2] = h[2];
+    guas.push({ bits: guihun.slice(), world: 3 });
+    return guas;
+}
+
+function findPalace(lineBits) {
+    for (const homeName of TRIGRAM_NAMES) {
+        const guas = generatePalaceGuas(homeName);
+        for (const g of guas) {
+            if (g.bits.every((b, i) => b === lineBits[i])) {
+                return { palace: homeName, world: g.world, element: TRIGRAM_ELEMENT[homeName] };
+            }
+        }
+    }
+    return null;
+}
+
+function getNajiaLines(lowerName, upperName) {
+    const lower = NAJIA_TABLE[lowerName].inner;
+    const upper = NAJIA_TABLE[upperName].outer;
+    return [...lower, ...upper]; // 6项，初爻→上爻
+}
+
+function getLiuQin(branch, palaceElement) {
+    const e = BRANCH_ELEMENT[branch];
+    if (e === palaceElement) return '兄弟';
+    if (GEN_MAP[e] === palaceElement) return '父母';
+    if (GEN_MAP[palaceElement] === e) return '子孙';
+    if (KE_MAP[e] === palaceElement) return '官鬼';
+    if (KE_MAP[palaceElement] === e) return '妻财';
+    return '未知';
+}
+
+function getKongWang(dayStemIdx, dayBranchIdx) {
+    const startBranch = ((dayBranchIdx - dayStemIdx) % 12 + 12) % 12;
+    const void1 = BRANCHES[(startBranch + 10) % 12];
+    const void2 = BRANCHES[(startBranch + 11) % 12];
+    return [void1, void2];
+}
+
+/* 根据六爻录入（yaoValues：index0=初爻...index5=上爻）+ 日辰干支，排出完整卦盘 */
+function computeFullPaipan(yaoValues, dayStemChar, dayBranchChar) {
+    const isYang = v => (v === '少阳' || v === '老阳');
+    const isMoving = v => (v === '老阳' || v === '老阴');
+
+    const benBits = yaoValues.map(v => isYang(v) ? 1 : 0);
+    const bianBits = yaoValues.map((v, i) => isMoving(v) ? flipBit(benBits[i]) : benBits[i]);
+
+    const benLower = bitsToTrigramName(benBits.slice(0, 3));
+    const benUpper = bitsToTrigramName(benBits.slice(3, 6));
+    const benName = GUA_NAME_TABLE[benUpper][benLower];
+    const palaceInfo = findPalace(benBits);
+
+    const bianLower = bitsToTrigramName(bianBits.slice(0, 3));
+    const bianUpper = bitsToTrigramName(bianBits.slice(3, 6));
+    const bianName = GUA_NAME_TABLE[bianUpper][bianLower];
+
+    const benNajia = getNajiaLines(benLower, benUpper);
+    const bianNajia = getNajiaLines(bianLower, bianUpper);
+
+    const dayStemIdx = STEMS.indexOf(dayStemChar);
+    const dayBranchIdx = BRANCHES.indexOf(dayBranchChar);
+    const voidBranches = getKongWang(dayStemIdx, dayBranchIdx);
+    const liushenStart = LIUSHEN_START[dayStemChar];
+    const worldPos = palaceInfo.world;
+    const responsePos = ((worldPos - 1 + 3) % 6) + 1;
+
+    const lines = [];
+    for (let i = 0; i < 6; i++) {
+        const pos = i + 1; // 1=初爻...6=上爻
+        const najiaStr = benNajia[i];
+        const branch = najiaStr[1];
+        const liuqin = getLiuQin(branch, palaceInfo.element);
+        const liushen = LIUSHEN_ORDER[(liushenStart + i) % 6];
+        const moving = isMoving(yaoValues[i]);
+        const line = {
+            pos, yao: yaoValues[i], moving, najia: najiaStr, branch, liuqin, liushen,
+            isWorld: pos === worldPos, isResponse: pos === responsePos,
+            isVoid: voidBranches.includes(branch)
+        };
+        if (moving) {
+            line.bianNajia = bianNajia[i];
+            line.bianBranch = bianNajia[i][1];
+        }
+        lines.push(line);
+    }
+
+    return {
+        benName, benPalace: palaceInfo.palace, benElement: palaceInfo.element,
+        worldPos, responsePos, bianName, voidBranches, lines
+    };
+}
+
 /* ============ 顶部实时时钟 ============ */
 function updateLiveClock() {
     const now = new Date();
@@ -586,6 +801,8 @@ function refreshGanZhiFields() {
     document.getElementById('month').value = gz.month;
     document.getElementById('day').value = gz.day;
     document.getElementById('hour').value = gz.hour;
+
+    renderPaipanPreview();
 }
 
 function setToNow() {
@@ -596,6 +813,7 @@ function setToNow() {
 setToNow();
 baseDateTimeInput.addEventListener('change', refreshGanZhiFields);
 document.getElementById('syncNowBtn').addEventListener('click', setToNow);
+document.getElementById('day').addEventListener('input', renderPaipanPreview);
 
 /* ============ 求测事项快捷标签 ============ */
 document.querySelectorAll('.quick-tag').forEach(tag => {
@@ -650,8 +868,68 @@ yaoListEl.addEventListener('change', e => {
         const row = e.target.closest('.yao-row');
         const moving = e.target.value === '老阳' || e.target.value === '老阴';
         row.classList.toggle('is-moving', moving);
+        renderPaipanPreview();
     }
 });
+
+/* ============ 自动排盘预览渲染 ============ */
+function renderPaipanPreview() {
+    const area = document.getElementById('paipanArea');
+    if (!area) return;
+
+    const yaoValues = [];
+    for (let i = 1; i <= 6; i++) {
+        const selected = document.querySelector(`input[name="yao${i}"]:checked`);
+        if (!selected) {
+            area.innerHTML = '<div class="paipan-empty">选完六个爻之后，这里会自动排出专业卦盘</div>';
+            return;
+        }
+        yaoValues.push(selected.value);
+    }
+
+    const dayStr = (document.getElementById('day').value || '').trim();
+    if (!/^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/.test(dayStr)) {
+        area.innerHTML = '<div class="paipan-empty">日柱干支格式不正确，暂无法排盘</div>';
+        return;
+    }
+
+    let pp;
+    try {
+        pp = computeFullPaipan(yaoValues, dayStr[0], dayStr[1]);
+    } catch (e) {
+        area.innerHTML = '<div class="paipan-empty">排盘计算出错，请检查六爻录入</div>';
+        return;
+    }
+
+    const yaoSym = { '少阳': '—', '少阴': '- -', '老阳': 'X', '老阴': 'o' };
+    const rowsHtml = pp.lines.slice().reverse().map(l => `
+        <tr>
+            <td>${l.liushen}</td>
+            <td><span class="pp-yao-sym">${yaoSym[l.yao]}</span></td>
+            <td class="pp-liuqin">${l.liuqin}</td>
+            <td class="pp-najia">${l.najia}(${BRANCH_ELEMENT[l.branch]})</td>
+            <td><div class="pp-tags">
+                ${l.isWorld ? '<span class="pp-tag world">世</span>' : ''}
+                ${l.isResponse ? '<span class="pp-tag resp">应</span>' : ''}
+                ${l.isVoid ? '<span class="pp-tag void">空</span>' : ''}
+                ${l.moving ? '<span class="pp-tag move">动</span>' : ''}
+            </div></td>
+            <td class="pp-bian">${l.moving ? '→' + l.bianNajia + '(' + BRANCH_ELEMENT[l.bianBranch] + ')' : ''}</td>
+        </tr>
+    `).join('');
+
+    area.innerHTML = `
+        <div class="paipan-summary">
+            <span>本卦：<b>${pp.benName}</b>（${pp.benPalace}宫）</span>
+            <span>变卦：<b>${pp.bianName === pp.benName ? '无动爻，卦不变' : pp.bianName}</b></span>
+            <span>日辰空亡：<b>${pp.voidBranches.join('、')}</b></span>
+        </div>
+        <table class="paipan-table">
+            <thead><tr><th>六神</th><th>爻</th><th>六亲</th><th>纳甲</th><th>标记</th><th>动变</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+    `;
+}
 
 /* ============ toast 提示 ============ */
 let toastTimer = null;
@@ -673,17 +951,27 @@ document.getElementById('generateBtn').addEventListener('click', function () {
     const day = document.getElementById('day').value.trim();
     const hour = document.getElementById('hour').value.trim();
     if (!year || !month || !day || !hour) { showToast('请完整填写起卦时间的干支'); return; }
-
-    const yaoValues = [];
-    const movingLines = [];
-    for (let i = 1; i <= 6; i++) {
-        const selected = document.querySelector(`input[name="yao${i}"]:checked`);
-        if (!selected) { showToast(`请选择第${7 - i}爻的状态`); return; }
-        yaoValues.push(selected.value);
-        if (selected.value === '老阳' || selected.value === '老阴') movingLines.push(i);
+    if (!/^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/.test(day)) {
+        showToast('日柱干支格式不正确，无法排盘');
+        return;
     }
 
-    const prompt = generatePrompt(query, year, month, day, hour, yaoValues, movingLines);
+    const yaoValues = [];
+    for (let i = 1; i <= 6; i++) {
+        const selected = document.querySelector(`input[name="yao${i}"]:checked`);
+        if (!selected) { showToast(`请选择第${i}爻的状态`); return; }
+        yaoValues.push(selected.value); // index0=初爻...index5=上爻
+    }
+
+    let paipan;
+    try {
+        paipan = computeFullPaipan(yaoValues, day[0], day[1]);
+    } catch (e) {
+        showToast('排盘计算出错，请检查六爻录入');
+        return;
+    }
+
+    const prompt = generatePrompt(query, year, month, day, hour, yaoValues, paipan);
     document.getElementById('promptOutput').value = prompt;
     document.getElementById('promptOutput').scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
@@ -701,79 +989,80 @@ document.getElementById('copyBtn').addEventListener('click', async function () {
     }
 });
 
-function generatePrompt(query, year, month, day, hour, yaoValues, movingLines) {
-    // 用户录入顺序：上爻(6)...初爻(1)，转换为从下往上：初爻(1)...上爻(6)
-    const correctOrderYaoValues = [
-        yaoValues[0], yaoValues[1], yaoValues[2],
-        yaoValues[3], yaoValues[4], yaoValues[5]
-    ];
+function generatePrompt(query, year, month, day, hour, yaoValues, paipan) {
+    const yaoDisplayNames = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻'];
 
-    const originalHexagram = correctOrderYaoValues.map(yao =>
-        (yao === '少阳' || yao === '老阳') ? '阳爻' : '阴爻'
-    );
-    const changedHexagram = correctOrderYaoValues.map(yao => {
-        if (yao === '老阳') return '阴爻';
-        if (yao === '老阴') return '阳爻';
-        return (yao === '少阳') ? '阳爻' : '阴爻';
-    });
+    // 从上爻到初爻，符合传统排盘阅读习惯
+    const linesTop2Bottom = paipan.lines.slice().reverse();
+    const paipanTableText = linesTop2Bottom.map(l => {
+        const tags = [];
+        if (l.isWorld) tags.push('世');
+        if (l.isResponse) tags.push('应');
+        if (l.isVoid) tags.push('空亡');
+        if (l.moving) tags.push('动爻');
+        const tagText = tags.length ? `【${tags.join('·')}】` : '';
+        const bianText = l.moving ? `　→ 动变为：${l.bianNajia}（${BRANCH_ELEMENT[l.bianBranch]}）` : '';
+        return `${yaoDisplayNames[l.pos - 1]}：${l.liushen}　${l.liuqin}　${l.najia}（${BRANCH_ELEMENT[l.branch]}）${tagText}${bianText}`;
+    }).join('\n');
 
-    const movingLinesDisplay = [...movingLines].sort((a, b) => a - b);
+    const movingCount = paipan.lines.filter(l => l.moving).length;
+    const movingDesc = movingCount > 0
+        ? paipan.lines.filter(l => l.moving).map(l => `${yaoDisplayNames[l.pos - 1]}（${l.liuqin}${l.najia}）动变为${l.bianNajia}（${BRANCH_ELEMENT[l.bianBranch]}）`).join('；')
+        : '本卦无动爻，六爻安静';
 
-    return `你是一位深谙中国传统《周易》古卜之道的权威专家，精通京房八宫六十四卦、纳甲筮法、六亲六神世应体系。你的解卦风格严谨、细致、富有深度，同时又能将古老的智慧与现代生活情境相结合。你的任务是基于用户提供的完整卦象信息，进行专业、系统且富有洞见的分析和解读。
+    return `你是一位深谙中国传统《周易》占卜之道的权威专家，精通京房八宫六十四卦、纳甲筮法、六亲六神世应体系。你的解卦风格严谨、细致、富有深度，同时又能将古老的智慧与现代生活情境相结合。
+
+【重要】下面的排盘信息（卦名、宫属、世应、纳甲干支、六亲、六神、空亡、动变）均已由程序按京房纳甲法精确演算得出，请直接采信使用，不要自行重新推算或质疑这些基础数据，你的任务是在这些既定事实基础上做专业解读，而不是重新排盘。
 
 请严格遵循以下原则进行分析：
-1. 严格依据卦象：所有分析必须严格基于用户提供的卦象（卦爻、动爻、六亲、六神、世应等），不得臆造或脱离卦象空谈。
-2. 系统性分析：遵循"由基到详，由体到用"的分析逻辑：从本卦开始，再看动变；先看世应，再看六亲六神与爻位。
-3. 分点清晰阐述：回答时结构清晰，分点分段，使用专业术语，并对关键术语进行简要解释，确保用户理解。
-4. 辩证与综合：当卦象信息出现矛盾时（如用神旺相但被凶神克制），要明确指出其中的辩证关系，并进行权重分析，给出最可能的趋势判断。
-5. 给出范围，而非铁口直断：强调"卦象如此，事在人为"，解读结果是基于当前能量趋势的"可能性"，避免使用绝对化的断言。
-
-以下是用户问卦的完整信息：
+1. 严格依据卦象：所有分析必须严格基于下方给出的排盘数据，不得臆造或脱离卦象空谈。
+2. 系统性分析：遵循"由基到详，由体到用"的逻辑：先定用神，再看世应旺衰，再看动爻生克，最后综合断语。
+3. 分点清晰阐述：结构清晰，分点分段，使用专业术语并对关键术语做简要解释，确保非专业用户也能看懂。
+4. 辩证与综合：当信息出现矛盾时（如用神旺相但被凶神克制），要明确指出其中的辩证关系并进行权重判断。
+5. 给出范围，而非铁口直断：强调"卦象如此，事在人为"，解读是基于当前能量趋势的"可能性"，避免绝对化断言。
 
 【求测事项】
 ${query}
 
-【起卦时间】
-${year}年 ${month}月 ${day}日 ${hour}时
+【起卦时间（四柱）】
+${year}年　${month}月　${day}日　${hour}时
 
-【卦象信息】
-本卦（初始卦象）：${originalHexagram.join(' → ')} 
-变卦（变化后的卦象）：${changedHexagram.join(' → ')} 
-动爻位置：${movingLinesDisplay.length > 0 ? movingLinesDisplay.join('、') + '爻' : '无动爻'} 
+【本卦】${paipan.benName}（${paipan.benPalace}宫，五行属${paipan.benElement}）　世爻在${yaoDisplayNames[paipan.worldPos - 1]}，应爻在${yaoDisplayNames[paipan.responsePos - 1]}
+【变卦】${paipan.bianName === paipan.benName ? '无动爻，卦不变' : paipan.bianName}
+【日辰空亡】${paipan.voidBranches.join('、')}
 
-【详细爻象信息】
-上爻（第六爻）：${yaoValues[5]} ${yaoValues[5] === '老阳' || yaoValues[5] === '老阴' ? '(动爻)' : ''}
-五爻（第五爻）：${yaoValues[4]} ${yaoValues[4] === '老阳' || yaoValues[4] === '老阴' ? '(动爻)' : ''}
-四爻（第四爻）：${yaoValues[3]} ${yaoValues[3] === '老阳' || yaoValues[3] === '老阴' ? '(动爻)' : ''}
-三爻（第三爻）：${yaoValues[2]} ${yaoValues[2] === '老阳' || yaoValues[2] === '老阴' ? '(动爻)' : ''}
-二爻（第二爻）：${yaoValues[1]} ${yaoValues[1] === '老阳' || yaoValues[1] === '老阴' ? '(动爻)' : ''}
-初爻（第一爻）：${yaoValues[0]} ${yaoValues[0] === '老阳' || yaoValues[0] === '老阴' ? '(动爻)' : ''}
+【完整排盘（自上爻至初爻）】
+${paipanTableText}
+
+【动爻概览】${movingDesc}
+
+【用神选择参考，供你判断，非强制】
+测自身运势/成果 → 世爻本身；测财运/求财/配偶（男测） → 妻财；测事业/官职/疾病忌讳/配偶（女测） → 官鬼；测长辈/文书/合同/房产 → 父母；测子女/晚辈/下属/技艺/福运 → 子孙；测同辈/合伙人/竞争对手/破财 → 兄弟。请结合【${query}】自行判断本卦中最恰当的用神爻位。
 
 请根据以上信息，按照以下步骤进行专业分析：
 
 第一步：定性分析 - 本卦与变卦的宏观趋势
-首先，从整体上分析本卦的卦名、卦象寓意，以及它如何映射到用户所问的【${query}】。接着，分析变卦所指示的事态最终发展方向。阐述从本卦到变卦，整个事件发展脉络的象征意义。
+从整体上分析本卦的卦名、卦象寓意，以及它如何映射到用户所问的【${query}】。接着分析变卦所指示的事态最终发展方向，阐述从本卦到变卦整个事件发展脉络的象征意义。
 
 第二步：用神定位与旺衰分析
-明确本卦的用神，并分析该用神的旺衰状态：
-- 月建对用神是生、扶、克、耗、泄？
-- 日辰对用神是生、扶、克、耗、泄？
-- 用神在卦中是否得其他爻生扶（生），或受其他爻克制（克）？是否有动爻来生或来克？
-- 用神是否逢空亡或月破、日破？若有，请解释其含义。
+明确本次求测的用神爻位，并分析该用神的旺衰状态：
+- 月建（${month}）对用神地支是生、扶、克、耗、泄？
+- 日辰（${day}）对用神地支是生、扶、克、耗、泄？
+- 用神是否得其他爻生扶，或受其他爻克制？是否有动爻来生或来克用神？
+- 用神是否落在空亡（${paipan.voidBranches.join('、')}）之中？若是，请解释这对判断的影响。
 
 第三步：动爻核心分析
-${movingLinesDisplay.length > 0 ? `动爻是事情的枢纽，请逐一分析每个动爻：
-${movingLinesDisplay.map(line => `- 动爻 ${line}：此爻发动，对用神产生了什么影响（生、克、冲、合、刑、害）？这个动变过程揭示了事情发展中的哪个关键环节或变化？`).join('\n')}` : '此卦无动爻，主事态相对稳定，变化不大。'}
+${movingCount > 0 ? `动爻是事情的枢纽，请逐一分析每个动爻：\n${paipan.lines.filter(l => l.moving).map(l => `- ${yaoDisplayNames[l.pos - 1]}（${l.liuqin}，${l.najia}）动变为${l.bianNajia}（${BRANCH_ELEMENT[l.bianBranch]}）：此爻发动对用神产生了什么影响（生、克、冲、合、刑、害，以及是否构成"回头生"或"回头克"）？这个变化揭示了事情发展中的哪个关键环节？`).join('\n')}` : '此卦无动爻，主事态相对稳定，变化不大，可重点从世应与日月生克关系判断趋势。'}
 
 第四步：深度关系剖析
-- 世应关系：分析世爻与应爻的生克关系，以及它们各自的旺衰状态，判断"主客"形势。
-- 六亲联动：分析卦中其他六亲（妻财、父母、官鬼、子孙、兄弟）与用神、世爻的生克关系，揭示与事情相关的其他人物或因素。
-- 六神意象：结合所问事项，解读六神（青龙、朱雀等）所附加的意象。
+- 世应关系：分析世爻与应爻的生克关系及各自旺衰，判断"主客"形势。
+- 六亲联动：分析卦中其他六亲与用神、世爻的生克关系，揭示与事情相关的其他人物或因素。
+- 六神意象：结合所问事项，解读用神爻及世爻所附六神带来的意象色彩。
 
 第五步：综合断语与建议
 综合以上所有分析，给出一个总结性的趋势判断：
 - 吉凶层面：基于用神旺衰、动爻生克、世应关系，判断此事成功/顺利/不利的可能性有多大。
-- 过程描述：描述事情可能的发展过程和关键节点。
+- 过程描述：描述事情可能的发展过程和关键节点，可结合应期（若卦中有明显应期信息）简要说明。
 - 行动建议：根据卦象的提示，给出趋吉避凶的具体建议。
 
 请用专业、严谨的语言，分步骤、分层次地进行解读，确保分析全面且有深度。`;
